@@ -11,7 +11,6 @@ function App() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Po starcie – jeśli mamy apiKey w localStorage, pobierz todo + statsy
   useEffect(() => {
     if (apiKey) {
       fetchTodos();
@@ -29,13 +28,13 @@ function App() {
       const res = await axios.post(`${API_URL}/register`, {
         username: username.trim(),
       });
-      const data = res.data;
-      setApiKey(data.api_key);
-      localStorage.setItem("apiKey", data.api_key);
-      alert(`Zarejestrowano jako ${data.username}. API key zapisany.`);
-      setUsername("");
-      await fetchTodos();
-      await fetchStats();
+        const data = res.data;
+        setApiKey(data.api_key);
+        localStorage.setItem("apiKey", data.api_key);
+        alert(`Zalogowano jako ${data.username}. API key zapisany.`);
+        setUsername("");
+        await fetchTodos();
+        await fetchStats();
     } catch (err) {
       console.error("Błąd rejestracji:", err.response?.status, err.response?.data || err.message);
       alert("Błąd rejestracji. Sprawdź backend (logi w konsoli).");
@@ -46,7 +45,7 @@ function App() {
     return apiKey
       ? {
           headers: {
-            "X-API-Key": apiKey, // WAŻNE: to musi się zgadzać z backendem
+            "X-API-Key": apiKey,
           },
         }
       : {};
@@ -73,7 +72,7 @@ function App() {
   const fetchStats = async () => {
     if (!apiKey) return;
     try {
-      const res = await axios.get(`${API_URL}/stats`, getAuthHeaders());
+      const res = await axios.get(`${API_URL}/stats-pandas`, getAuthHeaders());
       setStats(res.data);
     } catch (err) {
       console.error(
@@ -139,7 +138,6 @@ function App() {
     <div style={{ maxWidth: 600, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}>
       <h1>Todo App (FastAPI + React)</h1>
 
-      {/* Sekcja rejestracji / API key */}
       <section
         style={{
           border: "1px solid #ccc",
@@ -161,7 +159,7 @@ function App() {
               />
             </label>
             <button type="submit" style={{ marginLeft: 8 }}>
-              Zarejestruj
+              Zaloguj / Zarejestruj
             </button>
           </form>
         ) : (
@@ -174,7 +172,6 @@ function App() {
         )}
       </section>
 
-      {/* Sekcja zadań */}
       <section
         style={{
           border: "1px solid #ccc",
@@ -233,7 +230,6 @@ function App() {
         )}
       </section>
 
-      {/* Statystyki */}
       <section
         style={{
           border: "1px solid #ccc",
@@ -241,7 +237,7 @@ function App() {
           borderRadius: 8,
         }}
       >
-        <h2>3. Statystyki</h2>
+        <h2>3. Statystyki (Pandas)</h2>
         {stats ? (
           <ul>
             <li>Łącznie: {stats.total}</li>
@@ -251,6 +247,33 @@ function App() {
         ) : (
           <p>Brak danych (zarejestruj się i dodaj zadania).</p>
         )}
+        <button
+          style={{ marginTop: 8 }}
+          onClick={async () => {
+            if (!apiKey) {
+              alert("Najpierw się zaloguj.");
+              return;
+            }
+            try {
+              const res = await axios.get(`${API_URL}/todos/export`, {
+                ...getAuthHeaders(),
+                responseType: "blob",
+              });
+              const url = window.URL.createObjectURL(new Blob([res.data]));
+              const link = document.createElement("a");
+              link.href = url;
+              link.setAttribute("download", "todos.csv");
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+            } catch (err) {
+              console.error("Błąd eksportu CSV:", err);
+              alert("Błąd eksportu CSV.");
+            }
+          }}
+        >
+          Pobierz CSV
+        </button>
       </section>
     </div>
   );
